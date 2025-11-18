@@ -1,14 +1,13 @@
 
 const  mongoose  = require('mongoose')
+const slugify = require('slugify')
 
 
 // utils functions
 const AppError = require('../utils/AppError')
 const catchAsync = require('../utils/catchAsync')
-const response = require('../utils/response')
+const {response} = require('../utils/response')
 
-// external libraries
-const client = require('../lib/redis')
 
 
 const Product = require('../model/product.model')
@@ -68,6 +67,10 @@ exports.updateCategory = catchAsync(async  (req, res, next) => {
      if(!mongoose.Types.ObjectId.isValid(req.params.id) ){
         return next(new AppError("Invalid ID"))
     }
+
+    if (req.body.name) {
+  req.body.slug = slugify(req.body.name, { lower: true });
+}
 
     const updatedCategory = await Category.findByIdAndUpdate(req.params.id, req.body, {
         new: true, runValidators: true

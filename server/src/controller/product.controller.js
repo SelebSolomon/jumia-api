@@ -4,7 +4,7 @@ const  mongoose  = require('mongoose')
 // utils functions
 const AppError = require('../utils/AppError')
 const catchAsync = require('../utils/catchAsync')
-const response = require('../utils/response')
+const {response} = require('../utils/response')
 
 // external libraries
 const client = require('../lib/redis')
@@ -22,6 +22,21 @@ exports.postProduct = catchAsync(async (req, res, next ) => {
 
     // Generating a slug for SEO-friendly URLs
     req.body.slug = req.body.name.toLowerCase().replace(/\s+/g, "-");
+
+    const categoryId = req.body.category
+    if(!categoryId){
+      return next(new AppError('Id not found', 400))
+    }
+
+    if(!mongoose.Types.ObjectId.isValid(categoryId)){
+      return next(new AppError("Invalid Id", 400))
+    }
+
+    const category = await Category.findById(categoryId)
+
+  if (!category) {
+    return next(new AppError("Category does not exist", 404));
+  }
 
     const product = await Product.create(req.body)
 
@@ -51,8 +66,13 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     // If Redis is down/unreachable, log and continue to DB fetch
     console.error("Redis GET error:", err);
   }
+  
 
-    const products = await Product.find().select("images price stock slug")
+    const products = await Product.find().select("images price stock slug category")
+
+    if(products.length === 0){
+      next(new AppError('Products are not available at the moment', 404))
+    }
 
 
      try {
@@ -80,7 +100,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
 })
 
 exports.getOne = catchAsync(async(req, res,next) => {
-    const id = req.params
+    const {id} = req.params
 
     if(!mongoose.Types.ObjectId.isValid(id)){
         return next(new AppError('Invalid Product Id', 400))
@@ -122,7 +142,7 @@ response(res, 200, product)
 })
 
 exports.updateProduct = catchAsync(async(req, res, next) => {
-    const id = req.params
+    const {id} = req.params
 
     if(!mongoose.Types.ObjectId.isValid(id)){
         return next(new AppError('Invalid ID', 400))
@@ -143,7 +163,7 @@ exports.updateProduct = catchAsync(async(req, res, next) => {
 
 
 exports.deleteProduct = catchAsync(async(req, res, next) => {
-    const id = req.params
+    const {id} = req.params
 
     if(!mongoose.Types.ObjectId.isValid(id)){
         return next(new AppError('Invalid ID', 400))
@@ -195,6 +215,62 @@ exports.getCategoryProducts = async (req, res, next) => {
   }
 };
 
+
+exports.getYearlySales = async (req, res, next) => {
+  const year = req.params.year * 1;
+
+  const plan = await Product.aggregate([
+    {
+      $unwind: "$date",
+    },
+    {
+      $match: {
+        date: {
+          $gte: new Date(`${year}-01-01`),
+          $lte: new Date(`${year}-12-31`),
+        },
+      },
+    },
+    {
+      $group: {
+        _id: { $month: "$date" },
+        numberOfProducts: { $sum: 1 },
+        products: { $push: "$name" },
+      },
+    },
+    {
+      $addFields: {
+        month: {
+          $arrayElemAt: [
+            [
+              "", // index 0 (unused)
+              "January",
+              "February",
+              "March",
+              "April",
+              "May",
+              "June",
+              "July",
+              "August",
+              "September",
+              "October",
+              "November",
+              "December",
+            ],
+            "$_id", // use the month number (1–12) as index
+          ],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+      },
+    },
+  ]);
+
+  response(res, 200, plan);
+};
 
 // //  get products in a single category (child)
 // exports.getProductByCategory = catchAsync(async (req, res, next) => {

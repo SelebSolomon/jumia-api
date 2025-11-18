@@ -1,18 +1,18 @@
 const express = require("express");
-const reviewController = require("../controller/reviewController");
-const authController = require('../controller/authentication')
+const reviewController = require("../controller/review.controller");
+const authMiddleware = require('../middleware/auth.middleware')
 const router = express.Router({mergeParams: true});
 
 router
   .route("/")
   .get(reviewController.getAllReviews)
-  .post(authController.protect, reviewController.postReview);
+  .post(authMiddleware.protect, reviewController.postReview);
 
 
   router
   .route('/:id')
   .get(reviewController.getReview)
-  .patch(authController.protect,  authController.restrictTo('user', 'admin'), reviewController.updateReview)
-  .delete(authController.protect, authController.restrictTo('user', 'admin'), reviewController.deleteReview);
+  .patch(authMiddleware.protect,  authMiddleware.restrictTo('user', 'admin'), reviewController.updateReview)
+  .delete(authMiddleware.protect, authMiddleware.restrictTo('user', 'admin'), reviewController.deleteReview);
 
 module.exports = router;

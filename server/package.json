@@ -21,6 +21,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.4",
     "nodemailer": "^7.0.10",
+    "redis": "^5.9.0",
+    "slugify": "^1.6.6",
     "zod": "^4.1.12"
   }
 }

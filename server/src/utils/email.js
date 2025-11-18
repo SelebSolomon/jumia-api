@@ -3,12 +3,13 @@ const nodemailer = require("nodemailer");
 const path = require("path");
 const { htmlToText } = require("html-to-text");
 const { ENV } = require("../lib/env");
+
 module.exports = class Email {
   constructor(user, url) {
     this.to = user.email;
     this.userName = user.userName;
     this.url = url;
-    this.from = `Skill-link <${ENV.EMAIL_FROM}>`;
+    this.from = `Jumia <${ENV.EMAIL_FROM}>`;
   }
 
   newTransport() {
@@ -22,10 +23,12 @@ module.exports = class Email {
   }
 
   async send(templateName, subject) {
+      console.log('send hit')
+
     // 1) Load the template module
     const templatePath = path.join(
       process.cwd(),
-      "SRC",
+      "src",
       "emailTemplate",
       `${templateName}.js`
     );
@@ -51,6 +54,7 @@ module.exports = class Email {
 
   async sendWelcome() {
     await this.send("welcome", "Welcomed to the Skill-link App");
+    console.log('email sent')
   }
   async sendPasswordReset() {
     await this.send(

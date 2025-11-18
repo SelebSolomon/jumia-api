@@ -1,6 +1,8 @@
-const Review = require("../model/reviewModel");
+const { default: mongoose } = require("mongoose");
+const Review = require("../model/reviews.model");
 const AppError = require("../utils/AppError");
 const { response } = require("../utils/response");
+const Product = require("../model/product.model");
 
 exports.getAllReviews = async (req, res, next) => {
   try {
@@ -22,9 +24,27 @@ exports.getReview = async (req, res, next) => {
 
 exports.postReview = async (req, res, next) => {
   try {
+
+    const productId = req.body.product
+
+    if(!productId){
+      return next(new AppError("A review must belong to a product", 400))
+    }
+
+    if(!mongoose.Types.ObjectId.isValid(productId)){
+      return next(new AppError("Invalid Id", 400))
+    }
+
+    const product = await Product.findById(productId)
+
+    if(!product){
+      return next(new AppError('Product not found', 404))
+    }
     // Automatically assign product and user ... its help for nexted route and i can also make it a middleware but let it be here for clearer view lol
-    if (!req.body.product) req.body.product = req.params.productId;
+    if (!productId) req.body.product = req.params.productId;
     req.body.user = req.user.id;
+
+    
 
     const review = await Review.create(req.body);
 

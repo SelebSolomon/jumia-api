@@ -5,6 +5,10 @@ const globalErrorHandler = require("./src/middleware/error.middleware");
 
 // route handlers
 const authRoutes = require("./src/routes/auth.routes");
+const userRoutes = require("./src/routes/user.routes")
+const productRoutes = require("./src/routes/product.routes")
+const categoryRoute = require("./src/routes/category.routes")
+const reviewRoutes = require("./src/routes/review.route")
 
 
 const app = express();
@@ -15,6 +19,13 @@ app.use(cookieParser());
 
 // Routes
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/category", categoryRoute);
+app.use("/api/v1/reviews", reviewRoutes);
+
+
+
 
 
 

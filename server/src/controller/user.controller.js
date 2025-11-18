@@ -1,7 +1,8 @@
 const AppError = require("../utils/AppError");
 const { response } = require("../utils/response");
 const User = require("../model/user.model");
-const catchAsync = require('../utils/catchAsync')
+const catchAsync = require('../utils/catchAsync');
+const { default: mongoose } = require("mongoose");
 
 const filteredObj = (obj, ...allowedFields) => {
   const newObj = {};
@@ -19,7 +20,7 @@ exports.getMe = (req, res, next) => {
 
 exports.getUser = catchAsync(async (req, res, next) => {
   
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).select("-passwordResetToken -updatedAt -createdAt -isActive -role")
     if(!user){
         return next(new AppError('User not found', 404))
     }
@@ -40,7 +41,7 @@ exports.getAllUser = catchAsync(async (req, res, next) => {
 
 });
 
-exports.updateUser = catchAsync( async (req, res, next) => {
+exports.updateMe = catchAsync( async (req, res, next) => {
   
     if (req.body.password || req.body.passwordConfirm) {
       next(
@@ -50,14 +51,14 @@ exports.updateUser = catchAsync( async (req, res, next) => {
         ))
       
     }
-    const filteredBody = filteredObj(req.body, "name", "email");
+    const filteredBody = filteredObj(req.body, "userName", "email", "firstName", "lastName", "Phone");
 
-    const user = await User.findByIdAndUpdate(req.params.id, filteredBody, {
+    const user = await User.findByIdAndUpdate(req.user.id, filteredBody, {
       runValidators: true,
       new: true,
-    }).select("name email role createdAt");
+    });
 
-    response(res, 201, user);
+    response(res, 201, data = 'Updated successfully');
  
 });
 
@@ -78,9 +79,41 @@ exports.deleteUser = catchAsync(async (req, res, next) => {
 });
 
 exports.suspendUser = catchAsync( async (req, res, next) => {
-  
-    await User.findByIdAndUpdate(req.params.id, { status: "suspended" });
 
-    res.status(204).json({ status: "success" });
+  console.log('hit')
+    const user = await User.findById(req.params.id)
+
+    if(!user) {
+      return next(new AppError("Id does not exist", 404))
+    }
+      if(!mongoose.Types.ObjectId.isValid(req.params.id))
+      {
+        return next(new AppError("Invalid Id", 400))
+      }
+      
+        await user.findByIdAndUpdate(req.params.id, { status: "suspended" });
+
+        res.status(204).json({ status: "success" });
+    
+  });
+
+
+exports.updateUser = catchAsync( async (req, res, next) => {
+  
+    if (req.body.password || req.body.passwordConfirm) {
+      next(
+        new AppError(
+          "This route is not for update password, please use the /updatePassword",
+          400
+        ))
+      
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+      runValidators: true,
+      new: true,
+    })
+
+    response(res, 201, user);
  
 });

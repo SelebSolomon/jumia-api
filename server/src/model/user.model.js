@@ -155,6 +155,10 @@ userSchema.set("toJSON", {
     delete ret.passwordResetExpires;
     delete ret.passwordChangedAt;
     delete ret.passwordResetExpires;
+    delete ret.passwordResetToken
+    delete ret.phoneVerified
+    delete ret.emailVerified
+    
 
     return ret;
   },

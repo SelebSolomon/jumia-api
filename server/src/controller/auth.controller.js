@@ -43,6 +43,7 @@ const createToken = (user, statusCode, res) => {
 };
 
 exports.register = catchAsync(async (req, res, next) => {
+  console.log(Email)
   // Validate input with Zod
   const registerResults = registerSchema.safeParse(req.body);
   if (!registerResults.success) {
@@ -60,16 +61,16 @@ exports.register = catchAsync(async (req, res, next) => {
     password,
     confirmPassword,
   } = registerResults.data;
-
+  
   // Check if user already exists
   const existingUser = await User.findOne({
     $or: [{ userName }, { email }, { phone }],
   });
-
+  
   if (existingUser) {
     return next(new AppError("User already exists", 400));
   }
-
+  
   // Create new user (confirmPassword will be removed in pre-save hook)
   const newUser = await User.create({
     userName,
@@ -82,12 +83,12 @@ exports.register = catchAsync(async (req, res, next) => {
     password,
     confirmPassword,
   });
-
-  await Profile.create({ userId: newUser._id });
-
+  
+  
   // Send welcome email
   const url = `${req.protocol}://${req.get("host")}/me`;
   await new Email(newUser, url).sendWelcome();
+  console.log('hello world')
 
   createToken(newUser, 201, res);
 });
