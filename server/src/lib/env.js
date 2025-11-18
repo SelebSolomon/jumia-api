@@ -1,0 +1,19 @@
+const dotenv = require("dotenv/config");
+
+exports.ENV = {
+  PORT: process.env.PORT,
+  MONGO_URL: process.env.MONGO_URL,
+  NODE_ENV: process.env.NODE_ENV,
+
+  EMAIL_SENDING_ADDRESS: process.env.EMAIL_SENDING_ADDRESS,
+  EMAIL_SENDING_PASSWORD: process.env.EMAIL_SENDING_PASSWORD,
+  EMAIL_FROM: process.env.EMAIL_FROM,
+
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_SECRET_EXPIRES_IN: process.env.JWT_SECRET_EXPIRES_IN,
+  JWT_COOKIE_EXPIRES_IN: process.env.JWT_COOKIE_EXPIRES_IN,
+
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+};
