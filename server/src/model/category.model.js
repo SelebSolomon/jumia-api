@@ -7,6 +7,7 @@ const categorySchema = new mongoose.Schema(
     description: { type: String },
     slug: { type: String, unique: true },
     image: { type: String },
+    imagePublicId: String,
     createdAt: { type: Date, default: Date.now },
     parent: {
       type: mongoose.Schema.Types.ObjectId,
@@ -30,6 +31,7 @@ categorySchema.pre("save", function (next) {
   }
   next();
 });
+
 // since i have unique in slug and name that is why i commented this one becuase mongodb has automatically created the indexes
 // categorySchema.index({ name: 1 }); // fast search on name
 // categorySchema.index({ slug: 1 }); // fast search on slug

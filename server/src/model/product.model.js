@@ -77,6 +77,11 @@ productSchema.pre("save", function (next) {
   next();
 });
 
+
+// for fast searching i will be using indexing 
+productSchema.index({ name: "text", description: "text" });
+productSchema.index({ category: 1, price: 1 }); // for filtering by category/price
+
 const Product = mongoose.model("Product", productSchema);
 
 module.exports = Product;

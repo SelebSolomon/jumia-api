@@ -13,24 +13,45 @@ const {response} = require('../utils/response')
 const Product = require('../model/product.model')
 const Category = require('../model/category.model')
 
+const { uploadToCloudinary } = require("../utils/cloudinary");
+const cloudinary = require("../lib/cloudinary");
+
 exports.createCategory = catchAsync(async (req, res, next) => {
+  const { parent, description, name } = req.body;
 
-    const {parent, description, name, image, } = req.body
+  // Validate required fields
+  if (!name) return next(new AppError("Category name is required", 400));
 
-    if(parent) {
-        const parentCategory = await Category.findById(parent)
-        if(!parentCategory){
-            return next(new AppError('Parent category not found', 404))
-        }
-    }
+  // Check for parent category
+  let parentCategory = null;
+  if (parent) {
+    if (!mongoose.Types.ObjectId.isValid(parent))
+      return next(new AppError("Invalid parent category ID", 400));
 
-    const category = await Category.create({
-        name, parent: parent, description, image
-    })
+    parentCategory = await Category.findById(parent);
+    if (!parentCategory) return next(new AppError("Parent category not found", 404));
+  }
 
-    response(res, 201, category)
-    
-})
+  // Upload image to Cloudinary if provided
+  let imageUrl = null;
+  let imagePublicId = null;
+  if (req.file) {
+    const uploadResult = await uploadToCloudinary(req.file.buffer, "categories");
+    imageUrl = uploadResult.secure_url;
+    imagePublicId = uploadResult.public_id;
+  }
+
+  // Create category
+  const category = await Category.create({
+    name,
+    parent: parentCategory ? parentCategory._id : null,
+    description,
+    image: imageUrl,
+    imagePublicId
+  });
+
+  response(res, 201, category);
+});
 
 
 exports.getAllCategory = catchAsync(async(req, res, next) => {
@@ -59,36 +80,94 @@ exports.getCategory = catchAsync(async (req, res, next ) => {
     response(res, 200, category);
 })
 
-exports.updateCategory = catchAsync(async  (req, res, next) => {
-    if(req.user.role !== 'admin'){
-        return next(new AppError('You dont have the permission to perform this acction ' , 400))
+
+
+
+exports.updateCategory = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { name, parent, description } = req.body;
+
+  // Validate category ID
+  if (!mongoose.Types.ObjectId.isValid(id))
+    return next(new AppError("Invalid category ID", 400));
+
+  const category = await Category.findById(id);
+  if (!category) return next(new AppError("Category not found", 404));
+
+  // Handle parent category update
+  if (parent) {
+    if (!mongoose.Types.ObjectId.isValid(parent))
+      return next(new AppError("Invalid parent category ID", 400));
+
+    const parentCategory = await Category.findById(parent);
+    if (!parentCategory) return next(new AppError("Parent category not found", 404));
+
+    category.parent = parentCategory._id;
+  } else if (parent === null) {
+    // Allow removing parent
+    category.parent = null;
+  }
+
+  // Update basic fields
+  if (name) category.name = name;
+  if (description) category.description = description;
+
+  // Handle image replacement
+  if (req.file) {
+    // Delete old image from Cloudinary if exists
+    if (category.imagePublicId) {
+      await cloudinary.uploader.destroy(category.imagePublicId);
     }
 
-     if(!mongoose.Types.ObjectId.isValid(req.params.id) ){
-        return next(new AppError("Invalid ID"))
+    const uploadResult = await uploadToCloudinary(req.file.buffer, "categories");
+    category.image = uploadResult.secure_url;
+    category.imagePublicId = uploadResult.public_id;
+  } else if (req.body.image === null) {
+    return next(new AppError("Cannot remove category image without uploading a new one", 400));
+  }
+
+  await category.save();
+
+  response(res, 200, category);
+});
+
+
+
+exports.deleteCategory = catchAsync(async (req, res, next) => {
+    const { id } = req.params;
+
+    // Admin check
+    if (req.user.role !== 'admin') {
+        return next(new AppError("You don't have permission to perform this action", 403));
     }
 
-    if (req.body.name) {
-  req.body.slug = slugify(req.body.name, { lower: true });
-}
-
-    const updatedCategory = await Category.findByIdAndUpdate(req.params.id, req.body, {
-        new: true, runValidators: true
-    })
-
-    response(res, 200, updatedCategory)
-
-})
-
-exports.deleteCategory = catchAsync(async(req, res, next) => {
-    if(req.user.role !== 'admin'){
-        return next(new AppError('You dont have the permission to perform this acction ' , 400))
+    // Validate ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return next(new AppError("Invalid category ID", 400));
     }
 
-     if(!mongoose.Types.ObjectId.isValid(req.params.id) ){
-        return next(new AppError("Invalid ID"))
+    const category = await Category.findById(id);
+    if (!category) {
+        return next(new AppError("Category not found", 404));
     }
 
-    await Category.findByIdAndDelete(req.params.id)
-    response(res, 204, data= 'deleted successfully')
-})
+    // Prevent deletion if category has child categories
+    const child = await Category.findOne({ parent: id });
+    if (child) {
+        return next(new AppError("Cannot delete category with child categories. Remove or reassign them first.", 400));
+    }
+
+    // Delete image from Cloudinary
+    if (category.imagePublicId) {
+        try {
+            await cloudinary.uploader.destroy(category.imagePublicId);
+        } catch (err) {
+            console.error("Cloudinary deletion error:", err);
+        }
+    }
+
+    // Delete the category
+    await Category.findByIdAndDelete(id);
+
+    response(res, 204, "Category deleted successfully");
+});
