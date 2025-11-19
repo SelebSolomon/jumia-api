@@ -1,61 +1,68 @@
-const { default: mongoose } = require("mongoose");
+const mongoose  = require("mongoose");
 const Review = require("../model/reviews.model");
 const AppError = require("../utils/AppError");
 const { response } = require("../utils/response");
 const Product = require("../model/product.model");
+const catchAsync = require('../utils/catchAsync')
 
-exports.getAllReviews = async (req, res, next) => {
-  try {
+exports.getAllReviews = catchAsync( async (req, res, next) => {
+  
     const reviews = await Review.find();
+
+    if(reviews.length === 0){
+      next(new AppError('No reviews available yet', 404))
+    }
+
     response(res, 200, reviews);
-  } catch (error) {
-    next(error);
-  }
-};
+  
+});
 
-exports.getReview = async (req, res, next) => {
-  try {
+exports.getReview = catchAsync( async (req, res, next) => {
+  
     const review = await Review.findById(req.params.id);
+    if(!review){
+      return next(new AppError('No review found', 400))
+    }
     response(res, 200, review);
-  } catch (error) {
-    next(new AppError("No review was found", 404));
-  }
-};
+  
+});
 
-exports.postReview = async (req, res, next) => {
-  try {
+exports.postReview = catchAsync( async (req, res, next) => {
+  
+    const { product } = req.body;
 
-    const productId = req.body.product
-
-    if(!productId){
-      return next(new AppError("A review must belong to a product", 400))
+    if (!product || !mongoose.Types.ObjectId.isValid(product)) {
+      return next(new AppError("Invalid or missing product ID", 400));
     }
 
-    if(!mongoose.Types.ObjectId.isValid(productId)){
-      return next(new AppError("Invalid Id", 400))
+    const productExists = await Product.findById(product);
+    if (!productExists) {
+      return next(new AppError("Product not found", 404));
     }
 
-    const product = await Product.findById(productId)
+    const existingReview = await Review.findOne({
+      product,
+      user: req.user.id
+    });
 
-    if(!product){
-      return next(new AppError('Product not found', 404))
+    if (existingReview) {
+      return next(new AppError("You have already reviewed this product", 400));
     }
-    // Automatically assign product and user ... its help for nexted route and i can also make it a middleware but let it be here for clearer view lol
-    if (!productId) req.body.product = req.params.productId;
-    req.body.user = req.user.id;
 
-    
+    const review = await Review.create({
+      product,
+      user: req.user.id,
+      rating: req.body.rating,
+      review: req.body.review
+    });
 
-    const review = await Review.create(req.body);
+    response(res, 201, review);
 
-    response(res, 200, review);
-  } catch (error) {
-    next(error);
-  }
-};
+});
 
-exports.updateReview = async (req, res, next) => {
-  try {
+
+exports.updateReview = catchAsync( async (req, res, next) => {
+  
     const review = await Review.findById(req.params.id);
 
     if (!review) {
@@ -81,13 +88,10 @@ exports.updateReview = async (req, res, next) => {
     );
 
     response(res, 201, updatedReview);
-  } catch (error) {
-    next(new AppError("No review was found" + req.params.id, 404));
-  }
-};
+  
+});
 
-exports.deleteReview = async (req, res, next) => {
-  try {
+exports.deleteReview = catchAsync(async (req, res, next) => {
     const review = await Review.findById(req.params.id);
 
     if (!review) {
@@ -105,7 +109,5 @@ exports.deleteReview = async (req, res, next) => {
 
     await Review.findByIdAndDelete(req.params.id);
     res.status(204).json({ status: "success", data: null });
-  } catch (error) {
-    next(error);
-  }
-};
+
+});

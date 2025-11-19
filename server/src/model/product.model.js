@@ -23,10 +23,19 @@ const productSchema = new mongoose.Schema(
       default:  0,
       required: true
     },
-    images: {
-      type: String,
-    },
-    imagesPublicId: String,
+      // MAIN product image (used in cards & wishlist)
+  thumbnail: {
+    type: String,
+    required: true
+  },
+  thumbnailPublicId: {
+    type: String,
+    required: true
+  },
+
+  // Gallery images (extra images)
+  images: [String],
+  imagePublicIds: [String],
 
     category: {
       type: mongoose.Schema.Types.ObjectId, // Reference to Category
